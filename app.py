@@ -20,9 +20,9 @@ import re
 def upload_gists(auth, mdfile_url, prefix):
     token = tuple(auth.split(':'))
     mdfile = requests.get(mdfile_url).text
+    gists = requests.get('https://api.github.com/gists', auth=token).json()
     all_gists = {
-        list(gist['files'].keys())[0]: gist['id'] for gist in 
-        requests.get('https://api.github.com/gists', auth=token).json()
+        list(gist['files'].keys())[0]: gist['id'] for gist in gists
     }
     regex = re.compile(r"^```([a-z_. ]*)\n([\s\S]*?)\n```", 
                        re.MULTILINE | re.IGNORECASE)
@@ -57,10 +57,14 @@ def upload_gists(auth, mdfile_url, prefix):
         }
         if filename in all_gists:
             unused -= {filename}
+            print('\thttps://gist.github.com/' + all_gists[filename])
+            gist_url = 'https://api.github.com/gists/' + all_gists[filename]
+            old_content = list(requests.get(gist_url, auth=token).json()['files'].values())[0]['content']
+            if old_content == content:
+                continue
             url = requests.patch('https://api.github.com/gists/' + all_gists[filename], 
                            json=payload, 
                            auth=token).json()['id']
-            print('\thttps://gist.github.com/' + all_gists[filename])
         else:
             url = requests.post('https://api.github.com/gists', 
                                 json=payload, 
